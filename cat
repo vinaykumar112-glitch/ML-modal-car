@@ -1,0 +1,75 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import joblib
+
+# Load the dataset
+url = 'https://drive.google.com/uc?id=1yFuNVPXM5CH6g0TthYKcTGrZCCJo6n8Z'
+data = pd.read_csv(url)
+
+# Display the first few rows of the dataset
+print(data.head())
+
+# Data Preprocessing
+# Check for missing values
+print(data.isnull().sum())
+
+# Fill or drop missing values as appropriate
+data.dropna(inplace=True)  # or use data.fillna(method='ffill', inplace=True)
+
+# Convert categorical variables to numerical using Label Encoding
+label_encoders = {}
+categorical_columns = ['fuel_type', 'transmission', 'seller_type']
+
+for col in categorical_columns:
+    le = LabelEncoder()
+    data[col] = le.fit_transform(data[col])
+    label_encoders[col] = le
+
+# Define features and target variable
+X = data.drop('selling_price', axis=1)  # Features
+y = data['selling_price']  # Target variable
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the model
+model = RandomForestRegressor(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+rmse = np.sqrt(mse)
+
+print(f'Mean Absolute Error: {mae}')
+print(f'Root Mean Squared Error: {rmse}')
+
+# Save the model for future use
+joblib.dump(model, 'car_price_prediction_model.pkl')
+
+# Function to predict selling price
+def predict_selling_price(features):
+    # Convert features to DataFrame
+    features_df = pd.DataFrame([features])
+    
+    # Encode categorical features
+    for col in categorical_columns:
+        features_df[col] = label_encoders[col].transform(features_df[col])
+    
+    # Predict the selling price
+    predicted_price = model.predict(features_df)
+    return predicted_price[0]
+
+# Example usage
+if __name__ == "__main__":
+    # Example features: [fuel_type, years_of_service, showroom_price, previous_owners, kilometers_driven, seller_type, transmission]
+    example_features = ['Petrol', 5, 800000, 1, 50000, 'Individual', 'Manual']
+    predicted_price = predict_selling_price(example_features)
+    print(f'Predicted Selling Price: {predicted_price:.2f}')
